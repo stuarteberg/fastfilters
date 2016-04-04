@@ -56,10 +56,13 @@ template <bool is_symmetric, unsigned half_kernel_len>
 static void internal_convolve_fir_inner_single(const float *input, const unsigned int n_pixels, const unsigned n_times,
                                                const unsigned dim_stride, float *output, Kernel &kernel)
 {
-    const unsigned int kernel_len = 2 * half_kernel_len + 1;
-    // const unsigned int half_kernel_len = kernel.half_len();
     const unsigned int avx_end = (n_pixels - half_kernel_len) & ~31;
     const unsigned int avx_end_single = (n_pixels - half_kernel_len) & ~7;
+
+    if (avx_end_single < 32) {
+        convolve_fir_inner_single<false, false>(input, n_pixels, n_times, dim_stride, output, kernel);
+        return;
+    }
 
     float *tmp = (float *)detail::avx_memalign(32 * sizeof(float));
 
@@ -68,7 +71,6 @@ static void internal_convolve_fir_inner_single(const float *input, const unsigne
         float *cur_output = output + dim * dim_stride;
         const float *cur_input = input + dim * dim_stride;
 
-        // FIXME: for small inputs the right boundary will be wrong
         unsigned int i = 0;
         for (i = 0; i < half_kernel_len; ++i) {
             float sum = kernel.coefs[0] * cur_input[i];
@@ -105,8 +107,7 @@ static void internal_convolve_fir_inner_single(const float *input, const unsigne
         }
 
         // align to 32 pixel boundary
-        const unsigned int stop = std::min((unsigned int)32, avx_end_single);
-        for (; i < stop; i += 8) {
+        for (; i < 32; i += 8) {
             __m256 result = _mm256_loadu_ps(cur_input + i);
             __m256 kernel_val = _mm256_broadcast_ss(&kernel.coefs[0]);
 
@@ -125,27 +126,6 @@ static void internal_convolve_fir_inner_single(const float *input, const unsigne
             }
 
             _mm256_store_ps(tmp + i, result);
-        }
-
-        if (stop < 32) {
-            for (; i < n_pixels; ++i) {
-                float sum = 0.0;
-
-                for (unsigned int k = 0; k < kernel_len; ++k) {
-                    const int kreal = k - kernel_len / 2;
-                    unsigned int offset;
-                    if (kreal + i >= n_pixels)
-                        offset = n_pixels - ((kreal + i) % n_pixels) - 2;
-                    else
-                        offset = i + kreal;
-                    sum += kernel[k] * cur_input[offset];
-                }
-
-                tmp[i] = sum;
-            }
-
-            memcpy(cur_output, tmp, n_pixels * sizeof(float));
-            continue;
         }
 
         // main loop - work on 32 pixels at the same time
