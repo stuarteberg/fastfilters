@@ -16,28 +16,38 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 #include "fastfilters.hxx"
+#include "convolve_iir.hxx"
 
 namespace fastfilters
 {
 
 namespace iir
 {
-void convolve_iir_inner_single(const float *input, const unsigned int n_pixels, const unsigned n_times, float *output,
-                               const Coefficients &coefs)
-{
-    if (detail::cpu_has_avx2())
-        convolve_iir_inner_single_avx(input, n_pixels, n_times, output, coefs);
-    else
-        convolve_iir_inner_single_noavx(input, n_pixels, n_times, output, coefs);
-}
 
-void convolve_iir_outer_single(const float *input, const unsigned int n_pixels, const unsigned n_times, float *output,
-                               const Coefficients &coefs)
+void convolve_iir(const float *input, const unsigned int pixel_stride, const unsigned int pixel_n,
+                  const unsigned int dim_stride, const unsigned int n_dim, float *output, const Coefficients &coefs)
 {
-    if (detail::cpu_has_avx2())
-        convolve_iir_outer_single_avx(input, n_pixels, n_times, output, coefs);
-    else
-        convolve_iir_outer_single_noavx(input, n_pixels, n_times, output, coefs, n_times);
+    if (pixel_stride == 1) {
+        if (detail::cpu_has_avx_fma() && dim_stride == 1)
+            convolve_iir_inner_single<true, true, true, true>(input, pixel_stride, pixel_n, dim_stride, n_dim, output,
+                                                              coefs);
+        else if (detail::cpu_has_avx() && dim_stride == 1)
+            convolve_iir_inner_single<true, false, true, false>(input, pixel_stride, pixel_n, dim_stride, n_dim, output,
+                                                                coefs);
+        else
+            convolve_iir_inner_single<false, false, false, false>(input, pixel_stride, pixel_n, dim_stride, n_dim,
+                                                                  output, coefs);
+    } else {
+        if (detail::cpu_has_avx_fma() && dim_stride == 1)
+            convolve_iir_outer_single<true, true, true, true>(input, pixel_stride, pixel_n, dim_stride, n_dim, output,
+                                                              coefs);
+        else if (detail::cpu_has_avx() && dim_stride == 1)
+            convolve_iir_outer_single<true, false, true, false>(input, pixel_stride, pixel_n, dim_stride, n_dim, output,
+                                                                coefs);
+        else
+            convolve_iir_outer_single<false, false, false, false>(input, pixel_stride, pixel_n, dim_stride, n_dim,
+                                                                  output, coefs);
+    }
 }
 
 } // namepsace iir

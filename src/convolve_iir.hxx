@@ -15,48 +15,29 @@
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+#ifndef FASTFILTERS_CONVOLVE_IIR_HXX
+#define FASTFILTERS_CONVOLVE_IIR_HXX 1
+
 #include "fastfilters.hxx"
-#include "gaussians.hxx"
 
 namespace fastfilters
 {
-namespace fir
+
+namespace iir
 {
 
-bool make_gaussian(double stddev, unsigned order, unsigned n_coefs, std::array<float, 13> &v)
-{
-    if (stddev < 0)
-        return false;
-    if (n_coefs > 12)
-        return false;
+template <bool is_opt_avx, bool is_opt_fma, bool is_avx, bool is_fma>
+FASTFILTERS_API_EXPORT void convolve_iir_inner_single(const float *input, const unsigned int pixel_stride,
+                                                      const unsigned int pixel_n, const unsigned int dim_stride,
+                                                      const unsigned int n_dim, float *output,
+                                                      const Coefficients &coefs);
 
-    Gaussian<float> gauss(stddev, order);
-
-    float norm = 0.0;
-    if (order == 0) {
-        norm = gauss(0);
-        for (unsigned int k = 1; k < n_coefs; ++k)
-            norm += 2 * gauss(k);
-    } else {
-        unsigned int faculty = 1;
-        for (unsigned int i = 2; i <= order; ++i)
-            faculty *= i;
-
-        int sign = 1;
-        if (order == 1)
-            sign = -1;
-
-        norm = 0.0;
-        for (unsigned int k = 1; k < n_coefs; ++k) {
-            norm += gauss(k) * std::pow((double)k, int(order)) / faculty;
-            norm += sign * gauss(k) * std::pow((-1) * (double)k, int(order)) / faculty;
-        }
-    }
-
-    for (unsigned int i = 0; i < n_coefs; ++i)
-        v[i] = gauss(i) / norm;
-
-    return true;
+template <bool is_opt, bool is_opt_fma, bool is_avx, bool is_fma>
+FASTFILTERS_API_EXPORT void convolve_iir_outer_single(const float *input, const unsigned int pixel_stride,
+                                                      const unsigned int pixel_n, const unsigned int dim_stride,
+                                                      const unsigned int n_dim, float *output,
+                                                      const Coefficients &coefs);
 }
 }
-}
+
+#endif
