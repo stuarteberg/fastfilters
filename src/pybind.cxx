@@ -22,6 +22,7 @@
 
 namespace py = pybind11;
 
+#if 0
 static py::array_t<float> iir_filter(fastfilters::iir::Coefficients &coefs, py::array_t<float> input)
 {
     py::buffer_info info_in = input.request();
@@ -54,6 +55,7 @@ static py::array_t<float> iir_filter(fastfilters::iir::Coefficients &coefs, py::
 
     return result;
 }
+#endif
 
 PYBIND11_PLUGIN(fastfilters)
 {
@@ -84,7 +86,7 @@ PYBIND11_PLUGIN(fastfilters)
             return s[i];
         });
 
-    m.def("iir_filter", &iir_filter, "apply IIR filter to all dimensions of array and return result.");
+    // m.def("iir_filter", &iir_filter, "apply IIR filter to all dimensions of array and return result.");
 
     m.def("cpu_has_avx2", &fastfilters::detail::cpu_has_avx2);
 
