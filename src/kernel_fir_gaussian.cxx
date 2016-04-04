@@ -32,8 +32,29 @@ bool make_gaussian(double stddev, unsigned order, unsigned n_coefs, std::array<f
 
     Gaussian<float> gauss(stddev, order);
 
+    float norm = 0.0;
+    if(order == 0) {
+        norm = gauss(0);
+        for(unsigned int k = 1; k < n_coefs; ++k)
+            norm += 2*gauss(k);
+    } else {
+        unsigned int faculty = 1;
+        for(unsigned int i = 2; i <= order; ++i)
+            faculty *= i;
+
+        int sign = 1;
+        if (order == 1)
+            sign = -1;
+
+        norm = 0.0;
+        for (unsigned int k = 1; k < n_coefs; ++k) {
+            norm += gauss(k) * std::pow((double)k, int(order)) / faculty;
+            norm += sign * gauss(k) * std::pow((-1) * (double)k, int(order)) / faculty;
+        }
+    }
+
     for (unsigned int i = 0; i < n_coefs; ++i)
-        v[i] = gauss(i);
+        v[i] = gauss(i)/norm;
 
     return true;
 }
