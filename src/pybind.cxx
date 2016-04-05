@@ -102,6 +102,26 @@ template <class KernelType> py::array_t<float> convolve(KernelType &k, py::array
     return result;
 }
 
+py::array_t<float> gaussian2d(double sigma, unsigned int order, py::array_t<float> input)
+{
+    py::buffer_info info_in = input.request();
+    const unsigned int ndim = (unsigned int)info_in.ndim;
+
+    if (info_in.ndim != 2)
+        throw std::runtime_error("Number of dimensions must be 2");
+
+    auto result = py::array(py::buffer_info(nullptr, sizeof(float), py::format_descriptor<float>::value(), ndim,
+                                            info_in.shape, info_in.strides));
+    py::buffer_info info_out = result.request();
+
+    const float *inptr = (float *)info_in.ptr;
+    float *outptr = (float *)info_out.ptr;
+
+    fastfilters::gaussian2d(inptr, info_in.shape[1], info_in.shape[0], sigma, order, outptr);
+
+    return result;
+}
+
 } // anonymous namespace
 
 PYBIND11_PLUGIN(fastfilters)
@@ -137,6 +157,8 @@ PYBIND11_PLUGIN(fastfilters)
                       "apply IIR filter to all dimensions of array and return result.");
     m_fastfilters.def("convolve", &convolve<fastfilters::fir::Kernel>,
                       "apply FIR filter to all dimensions of array and return result.");
+
+    m_fastfilters.def("gaussian2d", &gaussian2d, "apply gaussian derivative filter to 2D array.");
 
     m_fastfilters.def("cpu_has_avx_fma", &fastfilters::detail::cpu_has_avx_fma);
     m_fastfilters.def("cpu_has_avx", &fastfilters::detail::cpu_has_avx);
