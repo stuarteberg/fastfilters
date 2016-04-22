@@ -144,10 +144,10 @@ FASTFILTERS_API_EXPORT void convolve_iir(const float *input, const unsigned int 
 
 namespace linalg
 {
-FASTFILTERS_API_EXPORT void eigen2d(const float *xx, const float *xy, const float *yy, float *ev_small, float *ev_big, const std::size_t len);
+void eigen2d(const float *xx, const float *xy, const float *yy, float *ev_small, float *ev_big, const std::size_t len);
 } // namespace linalg
 
-FASTFILTERS_API_EXPORT void gaussian2d(const float *input, const std::size_t n_x, const std::size_t n_y, const double sigma,
+void gaussian2d(const float *input, const std::size_t n_x, const std::size_t n_y, const double sigma,
                 const unsigned int order, float *output);
 
 } // namespace fastfilters
