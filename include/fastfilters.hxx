@@ -116,9 +116,9 @@ struct FASTFILTERS_API_EXPORT Kernel
     }
 };
 
-FASTFILTERS_API_EXPORT void convolve_fir(const float *input, const unsigned int pixel_n,
-                                         const unsigned int pixel_stride, const unsigned int dim,
-                                         const unsigned int dim_stride, float *output, Kernel &kernel);
+FASTFILTERS_API_EXPORT void convolve_fir(const float *input, const unsigned int pixel_stride,
+                                         const unsigned int pixel_n, const unsigned int dim_stride,
+                                         const unsigned int dim, float *output, Kernel &kernel);
 }
 
 namespace iir
@@ -136,9 +136,9 @@ struct FASTFILTERS_API_EXPORT Coefficients
     Coefficients(const double sigma, const unsigned order);
 };
 
-FASTFILTERS_API_EXPORT void convolve_iir(const float *input, const unsigned int pixel_n,
-                                         const unsigned int pixel_stride, const unsigned int n_dim,
-                                         const unsigned int dim_stride, float *output, const Coefficients &coefs);
+FASTFILTERS_API_EXPORT void convolve_iir(const float *input, const unsigned int pixel_stride,
+                                         const unsigned int pixel_n, const unsigned int dim_stride,
+                                         const unsigned int n_dim, float *output, const Coefficients &coefs);
 
 } // namespace iir
 
@@ -146,9 +146,6 @@ namespace linalg
 {
 void eigen2d(const float *xx, const float *xy, const float *yy, float *ev_small, float *ev_big, const std::size_t len);
 } // namespace linalg
-
-void gaussian2d(const float *input, const std::size_t n_x, const std::size_t n_y, const double sigma,
-                const unsigned int order, float *output);
 
 } // namespace fastfilters
 

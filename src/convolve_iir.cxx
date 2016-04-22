@@ -24,14 +24,14 @@ namespace fastfilters
 namespace iir
 {
 
-void convolve_iir(const float *input, const unsigned int pixel_n, const unsigned int pixel_stride,
-                  const unsigned int n_dim, const unsigned int dim_stride, float *output, const Coefficients &coefs)
+void convolve_iir(const float *input, const unsigned int pixel_stride, const unsigned int pixel_n,
+                  const unsigned int dim_stride, const unsigned int n_dim, float *output, const Coefficients &coefs)
 {
     if (pixel_stride == 1) {
-        if (detail::cpu_has_avx_fma() && pixel_stride == 1)
+        if (detail::cpu_has_avx_fma() && dim_stride == 1)
             convolve_iir_inner_single<true, true, true, true>(input, pixel_stride, pixel_n, dim_stride, n_dim, output,
                                                               coefs);
-        else if (detail::cpu_has_avx() && pixel_stride == 1)
+        else if (detail::cpu_has_avx() && dim_stride == 1)
             convolve_iir_inner_single<true, false, true, false>(input, pixel_stride, pixel_n, dim_stride, n_dim, output,
                                                                 coefs);
         else
