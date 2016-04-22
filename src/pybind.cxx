@@ -22,39 +22,9 @@
 
 namespace py = pybind11;
 
-namespace
+#if 0
+static py::array_t<float> iir_filter(fastfilters::iir::Coefficients &coefs, py::array_t<float> input)
 {
-
-template <class KernelType> class ConvolveFunctor
-{
-};
-
-template <> class ConvolveFunctor<fastfilters::iir::Coefficients>
-{
-  public:
-    void operator()(const float *input, const unsigned int pixel_stride, const unsigned int pixel_n,
-                    const unsigned int dim_stride, const unsigned int n_dim, float *output,
-                    const fastfilters::iir::Coefficients &coefs)
-    {
-        fastfilters::iir::convolve_iir(input, pixel_stride, pixel_n, dim_stride, n_dim, output, coefs);
-    }
-};
-
-template <> class ConvolveFunctor<fastfilters::fir::Kernel>
-{
-  public:
-    void operator()(const float *input, const unsigned int pixel_stride, const unsigned int pixel_n,
-                    const unsigned int dim_stride, const unsigned int n_dim, float *output,
-                    fastfilters::fir::Kernel &kernel)
-    {
-        fastfilters::fir::convolve_fir(input, pixel_stride, pixel_n, dim_stride, n_dim, output, kernel);
-    }
-};
-
-template <class KernelType> py::array_t<float> convolve(KernelType &k, py::array_t<float> input)
-{
-    ConvolveFunctor<KernelType> conv;
-
     py::buffer_info info_in = input.request();
     const unsigned int ndim = (unsigned int)info_in.ndim;
 
@@ -68,58 +38,41 @@ template <class KernelType> py::array_t<float> convolve(KernelType &k, py::array
     const float *inptr = (float *)info_in.ptr;
     float *outptr = (float *)info_out.ptr;
 
-    if (info_in.ndim == 1) {
-        conv(inptr, info_in.shape[0], 1, 1, 1, outptr, k);
-    } else if (info_in.ndim == 2) {
-        conv(inptr, info_in.shape[0], info_in.shape[1], info_in.shape[1], 1, outptr, k);
-        conv(outptr, info_in.shape[1], 1, info_in.shape[0], info_in.shape[1], outptr, k);
-    } else {
-        unsigned int n_dim = 1;
-        for (unsigned int i = 1; i < ndim; ++i)
-            n_dim *= info_in.shape[i];
-        conv(inptr, info_in.shape[0], n_dim, n_dim, 1, outptr, k);
+    unsigned int n_times = 1;
+    for (unsigned int i = 0; i < ndim - 1; ++i)
+        n_times *= info_in.shape[i];
 
-        n_dim = 1;
-        for (unsigned int i = 0; i < ndim - 1; ++i)
-            n_dim *= info_in.shape[i];
-        conv(outptr, info_in.shape[ndim - 1], 1, n_dim, info_in.shape[ndim - 1], outptr, k);
+    fastfilters::iir::convolve_iir_inner_single(inptr, info_in.shape[ndim - 1], n_times, outptr, coefs);
 
-        for (unsigned int i = ndim - 2; i > 0; --i) {
-            unsigned int n_dim_inner = 1;
-            unsigned int n_dim_outer = 1;
-            for (unsigned int j = 0; j < i; ++j)
-                n_dim_outer *= info_in.shape[j];
-            for (unsigned int j = i + 1; j < ndim; ++j)
-                n_dim_inner *= info_in.shape[j];
+    for (unsigned int i = 0; i < ndim - 1; ++i) {
+        n_times = 1;
+        for (unsigned int j = 0; j < ndim; ++j)
+            if (j != i)
+                n_times *= info_in.shape[j];
 
-            for (unsigned int j = 0; j < n_dim_outer; ++j) {
-                conv(outptr + n_dim_inner * info_in.shape[i - 1] * j, info_in.shape[i], n_dim_inner, n_dim_inner, 1,
-                     outptr + n_dim_inner * info_in.shape[i - 1] * j, k);
-            }
-        }
+        fastfilters::iir::convolve_iir_outer_single(outptr, info_in.shape[i], n_times, outptr, coefs);
     }
 
     return result;
 }
-
-} // anonymous namespace
+#endif
 
 PYBIND11_PLUGIN(fastfilters)
 {
-    py::module m_fastfilters("fastfilters", "fast gaussian kernel and derivative filters");
+    py::module m("fastfilters", "fast gaussian kernel and derivative filters");
 
-    py::class_<fastfilters::iir::Coefficients>(m_fastfilters, "IIRKernel")
+    py::class_<fastfilters::iir::Coefficients>(m, "IIRCoefficients")
         .def(py::init<const double, const unsigned int>())
         .def("__repr__", [](const fastfilters::iir::Coefficients &a) {
             std::ostringstream oss;
-            oss << "<fastfilters.IIRKernel with sigma = " << a.sigma << " and order = " << a.order << ">";
+            oss << "<fastfilters.IIRCoefficients with sigma = " << a.sigma << " and order = " << a.order << ">";
 
             return oss.str();
         })
         .def_readonly("sigma", &fastfilters::iir::Coefficients::sigma)
         .def_readonly("order", &fastfilters::iir::Coefficients::order);
 
-    py::class_<fastfilters::fir::Kernel>(m_fastfilters, "FIRKernel")
+    py::class_<fastfilters::fir::Kernel>(m, "FIRKernel")
         .def(py::init<const bool, const std::vector<float>>())
         .def("__repr__", [](const fastfilters::fir::Kernel &a) {
             std::ostringstream oss;
@@ -133,14 +86,9 @@ PYBIND11_PLUGIN(fastfilters)
             return s[i];
         });
 
-    m_fastfilters.def("convolve", &convolve<fastfilters::iir::Coefficients>,
-                      "apply IIR filter to all dimensions of array and return result.");
-    m_fastfilters.def("convolve", &convolve<fastfilters::fir::Kernel>,
-                      "apply FIR filter to all dimensions of array and return result.");
+    // m.def("iir_filter", &iir_filter, "apply IIR filter to all dimensions of array and return result.");
 
-    m_fastfilters.def("cpu_has_avx_fma", &fastfilters::detail::cpu_has_avx_fma);
-    m_fastfilters.def("cpu_has_avx", &fastfilters::detail::cpu_has_avx);
-    m_fastfilters.def("cpu_has_avx2", &fastfilters::detail::cpu_has_avx2);
+    m.def("cpu_has_avx2", &fastfilters::detail::cpu_has_avx2);
 
-    return m_fastfilters.ptr();
+    return m.ptr();
 }
