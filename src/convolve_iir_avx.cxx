@@ -18,34 +18,13 @@
 #include "fastfilters.hxx"
 #include "vector.hxx"
 #include "util.hxx"
-#include "convolve_iir.hxx"
 
 #include <immintrin.h>
 #include <stdlib.h>
 
 #include <stdexcept>
 
-#if defined(__FMA__) && defined(__AVX__)
-
-#define tpl_avx true
-#define tpl_fma true
-#define _wrap_mm256_fmadd_ps(a, b, c) (_mm256_fmadd_ps((a), (b), (c)))
-
-#elif defined(__AVX__)
-
-#define tpl_avx true
-#define tpl_fma false
-
-#define _wrap_mm256_fmadd_ps(a, b, c) (_mm256_add_ps(_mm256_mul_ps((a), (b)), (c)))
-
-#else
-
-#error "convovle_iir_avx.cxx needs to be compiled with AVX support"
-
-#endif
-
-#define tpl_opt_avx tpl_avx
-#define tpl_opt_fma tpl_fma
+#define CONVOLVE_IIR_FUNCTION(x) static void optimized_##x
 #include "convolve_iir_nosimd.cxx"
 
 namespace fastfilters
@@ -54,10 +33,8 @@ namespace fastfilters
 namespace iir
 {
 
-template <>
-void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
-    const float *input, const unsigned int pixel_stride, const unsigned int n_pixels, const unsigned int dim_stride,
-    const unsigned int n_times, float *output, const Coefficients &coefs)
+void convolve_iir_inner_single_avx(const float *input, const unsigned int n_pixels, const unsigned n_times,
+                                   float *output, const Coefficients &coefs)
 {
     __m256 mm_n_causal[4];
     __m256 mm_n_anticausal[4];
@@ -92,13 +69,13 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
 
             // compute sum of products between ins/outs and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(pixels, mm_n_causal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // move to next pixel
             prev_out3 = prev_out2;
@@ -121,13 +98,13 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
 
             // compute sum of products between ins/outs and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(pixels, mm_n_causal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // store causal output in temporary buffer
             _mm256_store_ps(tmpptr, pixels_res);
@@ -154,13 +131,13 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
         for (unsigned int i = n_pixels - coefs.n_border; i < n_pixels; ++i) {
             // add products between pixels and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(prev_in0, mm_n_anticausal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // move to next pixel
             prev_out3 = prev_out2;
@@ -181,13 +158,13 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
         for (int i = n_pixels - 1; i >= 0; --i) {
             // add products between pixels and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(prev_in0, mm_n_anticausal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // add output from causal pass
             __m256 pixels_res_causal = _mm256_load_ps(tmpptr);
@@ -218,17 +195,14 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
         }
     }
 
-    convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, false, false>(input + n_times_avx * n_pixels, pixel_stride,
-                                                                      n_pixels, dim_stride, n_times_normal,
-                                                                      output + n_times_avx * n_pixels, coefs);
+    optimized_convolve_iir_inner_single_noavx(input + n_times_avx * n_pixels, n_pixels, n_times_normal,
+                                              output + n_times_avx * n_pixels, coefs);
 
     detail::avx_free(tmp);
 }
 
-template <>
-void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
-    const float *input, const unsigned int pixel_stride, const unsigned int n_pixels, const unsigned int dim_stride,
-    const unsigned int n_times, float *output, const Coefficients &coefs)
+void convolve_iir_outer_single_avx(const float *input, const unsigned int n_pixels, const unsigned n_times,
+                                   float *output, const Coefficients &coefs)
 {
     __m256 mm_n_causal[4];
     __m256 mm_n_anticausal[4];
@@ -257,13 +231,13 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
 
             // compute sum of products between ins/outs and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(pixels, mm_n_causal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // move to next pixel
             prev_out3 = prev_out2;
@@ -283,13 +257,13 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
 
             // compute sum of products between ins/outs and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(pixels, mm_n_causal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in0, mm_n_causal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_causal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_causal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // store causal output in temporary buffer
             _mm256_store_ps(tmp + i * 8, pixels_res);
@@ -313,13 +287,13 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
         for (unsigned int i = n_pixels - 1 - coefs.n_border; i < n_pixels; ++i) {
             // add products between pixels and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(prev_in0, mm_n_anticausal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // move to next pixel
             prev_out3 = prev_out2;
@@ -337,13 +311,13 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
         for (int i = n_pixels - 1; i >= 0; --i) {
             // add products between pixels and kernel coefficients
             __m256 pixels_res = _mm256_mul_ps(prev_in0, mm_n_anticausal[0]);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
-            pixels_res = _wrap_mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in1, mm_n_anticausal[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in2, mm_n_anticausal[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_in3, mm_n_anticausal[3], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out0, mm_d[0], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out1, mm_d[1], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out2, mm_d[2], pixels_res);
+            pixels_res = _mm256_fmadd_ps(prev_out3, mm_d[3], pixels_res);
 
             // add output from causal pass
             __m256 pixels_res_causal = _mm256_load_ps(tmp + i * 8);
@@ -365,9 +339,8 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, tpl_avx, tpl_fma>(
         }
     }
 
-    convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, false, false>(input + n_times_avx * dim_stride, pixel_stride,
-                                                                      n_pixels, dim_stride, n_times_normal,
-                                                                      output + n_times_avx * dim_stride, coefs);
+    optimized_convolve_iir_outer_single_noavx(input + n_times_avx, n_pixels, n_times_normal, output + n_times_avx,
+                                              coefs, n_times);
 
     detail::avx_free(tmp);
 }

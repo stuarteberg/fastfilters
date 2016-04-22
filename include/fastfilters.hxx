@@ -136,9 +136,27 @@ struct FASTFILTERS_API_EXPORT Coefficients
     Coefficients(const double sigma, const unsigned order);
 };
 
-FASTFILTERS_API_EXPORT void convolve_iir(const float *input, const unsigned int pixel_stride,
-                                         const unsigned int pixel_n, const unsigned int dim_stride,
-                                         const unsigned int n_dim, float *output, const Coefficients &coefs);
+FASTFILTERS_API_EXPORT void convolve_iir_inner_single_noavx(const float *input, const unsigned int n_pixels,
+                                                            const unsigned n_times, float *output,
+                                                            const Coefficients &coefs);
+
+FASTFILTERS_API_EXPORT void convolve_iir_outer_single_noavx(const float *input, const unsigned int n_pixels,
+                                                            const unsigned n_times, float *output,
+                                                            const Coefficients &coefs, const unsigned stride);
+
+FASTFILTERS_API_EXPORT void convolve_iir_inner_single_avx(const float *input, const unsigned int n_pixels,
+                                                          const unsigned n_times, float *output,
+                                                          const Coefficients &coefs);
+
+FASTFILTERS_API_EXPORT void convolve_iir_outer_single_avx(const float *input, const unsigned int n_pixels,
+                                                          const unsigned n_times, float *output,
+                                                          const Coefficients &coefs);
+
+FASTFILTERS_API_EXPORT void convolve_iir_inner_single(const float *input, const unsigned int n_pixels,
+                                                      const unsigned n_times, float *output, const Coefficients &coefs);
+
+FASTFILTERS_API_EXPORT void convolve_iir_outer_single(const float *input, const unsigned int n_pixels,
+                                                      const unsigned n_times, float *output, const Coefficients &coefs);
 
 } // namespace iir
 

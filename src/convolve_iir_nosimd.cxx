@@ -16,16 +16,15 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 #include "fastfilters.hxx"
-#include "convolve_iir.hxx"
 
 #include <vector>
 
-#ifndef tpl_opt_fma
-#define tpl_opt_fma false
-#endif
-
-#ifndef tpl_opt_avx
-#define tpl_opt_avx false
+// the AVX versions need these scalar functions for up to the last 7 values.
+// this hack allows these functions to be compiled with much
+// more agressive optimizations (such as enabling the
+// fused multiply-add instructions)
+#ifndef CONVOLVE_IIR_FUNCTION
+#define CONVOLVE_IIR_FUNCTION(x) void x
 #endif
 
 namespace fastfilters
@@ -34,16 +33,14 @@ namespace fastfilters
 namespace iir
 {
 
-template <>
-void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, false, false>(
-    const float *input, const unsigned int pixel_stride, const unsigned int n_pixels, const unsigned int dim_stride,
-    const unsigned int n_times, float *output, const Coefficients &coefs)
+CONVOLVE_IIR_FUNCTION(convolve_iir_inner_single_noavx)(const float *input, const unsigned int n_pixels,
+                                                       const unsigned n_times, float *output, const Coefficients &coefs)
 {
     std::vector<float> tmpbfr(n_pixels);
 
     for (unsigned int dim = 0; dim < n_times; dim++) {
-        const float *cur_line = input + dim * dim_stride;
-        float *cur_output = output + dim * dim_stride;
+        const float *cur_line = input + dim * n_pixels;
+        float *cur_output = output + dim * n_pixels;
         float xtmp[4];
         float ytmp[4];
 
@@ -54,7 +51,7 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, false, false>(
         for (unsigned int i = 0; i < coefs.n_border; ++i) {
             float sum = 0.0;
 
-            xtmp[0] = cur_line[(coefs.n_border - i) * pixel_stride];
+            xtmp[0] = cur_line[coefs.n_border - i];
             for (unsigned int j = 0; j < 4; ++j)
                 sum += coefs.n_causal[j] * xtmp[j];
             for (unsigned int j = 0; j < 4; ++j)
@@ -71,7 +68,7 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, false, false>(
         for (unsigned int i = 0; i < n_pixels; ++i) {
             float sum = 0.0;
 
-            xtmp[0] = cur_line[i * pixel_stride];
+            xtmp[0] = cur_line[i];
             for (unsigned int j = 0; j < 4; ++j)
                 sum += coefs.n_causal[j] * xtmp[j];
             for (unsigned int j = 0; j < 4; ++j)
@@ -102,7 +99,7 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, false, false>(
                 ytmp[j] = ytmp[j - 1];
             }
 
-            xtmp[0] = cur_line[(n_pixels - i) * pixel_stride];
+            xtmp[0] = cur_line[n_pixels - i];
             ytmp[0] = sum;
         }
 
@@ -119,23 +116,22 @@ void convolve_iir_inner_single<tpl_opt_avx, tpl_opt_fma, false, false>(
                 ytmp[j] = ytmp[j - 1];
             }
 
-            xtmp[0] = cur_line[i * pixel_stride];
+            xtmp[0] = cur_line[i];
             ytmp[0] = sum;
-            cur_output[i * pixel_stride] = tmpbfr[i] + sum;
+            cur_output[i] = tmpbfr[i] + sum;
         }
     }
 }
 
-template <>
-void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, false, false>(
-    const float *input, const unsigned int pixel_stride, const unsigned int n_pixels, const unsigned int dim_stride,
-    const unsigned int n_times, float *output, const Coefficients &coefs)
+CONVOLVE_IIR_FUNCTION(convolve_iir_outer_single_noavx)(const float *input, const unsigned int n_pixels,
+                                                       const unsigned n_times, float *output, const Coefficients &coefs,
+                                                       const unsigned int stride)
 {
     std::vector<float> tmpbfr(n_pixels);
 
     for (unsigned int dim = 0; dim < n_times; dim++) {
-        const float *cur_line = input + dim * dim_stride;
-        float *cur_output = output + dim * dim_stride;
+        const float *cur_line = input + dim;
+        float *cur_output = output + dim;
         float xtmp[4];
         float ytmp[4];
 
@@ -146,7 +142,7 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, false, false>(
         for (unsigned int i = 0; i < coefs.n_border; ++i) {
             float sum = 0.0;
 
-            xtmp[0] = cur_line[(coefs.n_border - i) * pixel_stride];
+            xtmp[0] = cur_line[(coefs.n_border - i) * stride];
             for (unsigned int j = 0; j < 4; ++j)
                 sum += coefs.n_causal[j] * xtmp[j];
             for (unsigned int j = 0; j < 4; ++j)
@@ -163,7 +159,7 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, false, false>(
         for (unsigned int i = 0; i < n_pixels; ++i) {
             float sum = 0.0;
 
-            xtmp[0] = cur_line[i * pixel_stride];
+            xtmp[0] = cur_line[i * stride];
             for (unsigned int j = 0; j < 4; ++j)
                 sum += coefs.n_causal[j] * xtmp[j];
             for (unsigned int j = 0; j < 4; ++j)
@@ -194,7 +190,7 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, false, false>(
                 ytmp[j] = ytmp[j - 1];
             }
 
-            xtmp[0] = cur_line[(n_pixels - i) * pixel_stride];
+            xtmp[0] = cur_line[(n_pixels - i) * stride];
             ytmp[0] = sum;
         }
 
@@ -211,9 +207,9 @@ void convolve_iir_outer_single<tpl_opt_avx, tpl_opt_fma, false, false>(
                 ytmp[j] = ytmp[j - 1];
             }
 
-            xtmp[0] = cur_line[i * pixel_stride];
+            xtmp[0] = cur_line[i * stride];
             ytmp[0] = sum;
-            cur_output[i * pixel_stride] = tmpbfr[i] + sum;
+            cur_output[i * stride] = tmpbfr[i] + sum;
         }
     }
 }
