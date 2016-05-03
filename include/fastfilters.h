@@ -54,6 +54,7 @@ extern "C" {
 #endif
 
 typedef struct _fastfilters_kernel_fir_t *fastfilters_kernel_fir_t;
+typedef struct _fastfilters_kernel_iir_t *fastfilters_kernel_iir_t;
 
 typedef enum { FASTFILTERS_CPU_AVX, FASTFILTERS_CPU_FMA, FASTFILTERS_CPU_AVX2 } fastfilters_cpu_feature_t;
 
@@ -94,6 +95,10 @@ fastfilters_kernel_fir_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int
                                                                     float window_ratio);
 unsigned int DLL_PUBLIC fastfilters_kernel_fir_get_length(fastfilters_kernel_fir_t kernel);
 void DLL_PUBLIC fastfilters_kernel_fir_free(fastfilters_kernel_fir_t kernel);
+
+fastfilters_kernel_iir_t DLL_PUBLIC fastfilters_kernel_iir_gaussian(unsigned int order, double sigma,
+                                                                    float window_ratio);
+void DLL_PUBLIC fastfilters_kernel_iir_free(fastfilters_kernel_iir_t kernel);
 
 bool DLL_PUBLIC fastfilters_fir_convolve2d(const fastfilters_array2d_t *inarray, const fastfilters_kernel_fir_t kernelx,
                                            const fastfilters_kernel_fir_t kernely,
