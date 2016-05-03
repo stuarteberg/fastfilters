@@ -55,8 +55,24 @@
 #include "fastfilters.h"
 #include "common.h"
 
-fastfilters_kernel_fir_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int order, double sigma,
-                                                                    float window_ratio)
+static convolve_fn_t g_convolve_inner = NULL;
+static convolve_fn_t g_convolve_outer = NULL;
+
+void fastfilters_fir_init(void)
+{
+    if (fastfilters_cpu_check(FASTFILTERS_CPU_FMA)) {
+        g_convolve_outer = &fastfilters_fir_convolve_fir_outer_avxfma;
+        g_convolve_inner = &fastfilters_fir_convolve_fir_inner_avxfma;
+    } else if (fastfilters_cpu_check(FASTFILTERS_CPU_AVX)) {
+        g_convolve_outer = &fastfilters_fir_convolve_fir_outer_avx;
+        g_convolve_inner = &fastfilters_fir_convolve_fir_inner_avx;
+    } else {
+        g_convolve_outer = &fastfilters_fir_convolve_fir_outer;
+        g_convolve_inner = &fastfilters_fir_convolve_fir_inner;
+    }
+}
+
+fastfilters_kernel_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int order, double sigma, float window_ratio)
 {
     double norm;
     double sigma2 = -0.5 / sigma / sigma;
@@ -67,29 +83,35 @@ fastfilters_kernel_fir_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int
     if (sigma < 0)
         return NULL;
 
-    fastfilters_kernel_fir_t kernel = fastfilters_memory_alloc(sizeof(struct _fastfilters_kernel_fir_t));
+    fastfilters_kernel_t kernel = fastfilters_memory_alloc(sizeof(struct _fastfilters_kernel_t));
     if (!kernel)
-        return NULL;
+        goto out;
+
+    kernel->iir = NULL;
+    kernel->fir = fastfilters_memory_alloc(sizeof(struct _fastfilters_kernel_fir_t));
+    if (!kernel->fir)
+        goto out;
+
+    kernel->convolve_inner = g_convolve_inner;
+    kernel->convolve_outer = g_convolve_outer;
 
     if (window_ratio > 0)
-        kernel->len = floor(window_ratio * sigma + 0.5);
+        kernel->fir->len = floor(window_ratio * sigma + 0.5);
     else
-        kernel->len = floor(3.0 * sigma + 0.5 * order + 0.5); // FIXME: this is the formula currently used by vigra
-    // kernel->len = ceil((3.0 + 0.5 * (double)order) * sigma);
+        kernel->fir->len = floor(3.0 * sigma + 0.5 * order + 0.5); // FIXME: this is the formula currently used by vigra
+    // kernel->fir->len = ceil((3.0 + 0.5 * (double)order) * sigma);
 
     if (fabs(sigma) < 1e-6)
-        kernel->len = 0;
+        kernel->fir->len = 0;
 
-    kernel->coefs = fastfilters_memory_alloc(sizeof(float) * (kernel->len + 1));
-    if (!kernel->coefs) {
-        fastfilters_memory_free(kernel);
-        return NULL;
-    }
+    kernel->fir->coefs = fastfilters_memory_alloc(sizeof(float) * (kernel->fir->len + 1));
+    if (!kernel->fir->coefs)
+        goto out;
 
     if (order == 1)
-        kernel->is_symmetric = false;
+        kernel->fir->is_symmetric = false;
     else
-        kernel->is_symmetric = true;
+        kernel->fir->is_symmetric = true;
 
     switch (order) {
     case 1:
@@ -102,43 +124,43 @@ fastfilters_kernel_fir_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int
         break;
     }
 
-    for (unsigned int x = 0; x <= kernel->len; ++x) {
+    for (unsigned int x = 0; x <= kernel->fir->len; ++x) {
         double x2 = x * x;
         double g = norm * exp(x2 * sigma2);
         switch (order) {
         case 0:
-            kernel->coefs[x] = g;
+            kernel->fir->coefs[x] = g;
             break;
         case 1:
-            kernel->coefs[x] = x * g;
+            kernel->fir->coefs[x] = x * g;
             break;
         case 2:
-            kernel->coefs[x] = (1.0 - (x / sigma) * (x / sigma)) * g;
+            kernel->fir->coefs[x] = (1.0 - (x / sigma) * (x / sigma)) * g;
             break;
         }
     }
 
     if (order == 2) {
-        double dc = kernel->coefs[0];
-        for (unsigned int x = 1; x <= kernel->len; ++x)
-            dc += 2 * kernel->coefs[x];
-        dc /= (2.0 * (double)kernel->len + 1.0);
+        double dc = kernel->fir->coefs[0];
+        for (unsigned int x = 1; x <= kernel->fir->len; ++x)
+            dc += 2 * kernel->fir->coefs[x];
+        dc /= (2.0 * (double)kernel->fir->len + 1.0);
 
-        for (unsigned int x = 0; x <= kernel->len; ++x)
-            kernel->coefs[x] -= dc;
+        for (unsigned int x = 0; x <= kernel->fir->len; ++x)
+            kernel->fir->coefs[x] -= dc;
     }
 
     double sum = 0.0;
     if (order == 0) {
-        sum = kernel->coefs[0];
-        for (unsigned int x = 1; x <= kernel->len; ++x)
-            sum += 2 * kernel->coefs[x];
+        sum = kernel->fir->coefs[0];
+        for (unsigned int x = 1; x <= kernel->fir->len; ++x)
+            sum += 2 * kernel->fir->coefs[x];
     } else {
         unsigned int faculty = 1;
 
         int sign;
 
-        if (kernel->is_symmetric)
+        if (kernel->fir->is_symmetric)
             sign = 1;
         else
             sign = -1;
@@ -147,36 +169,48 @@ fastfilters_kernel_fir_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int
             faculty *= i;
 
         sum = 0.0;
-        for (unsigned int x = 1; x <= kernel->len; ++x) {
-            sum += kernel->coefs[x] * pow(-(double)x, (int)order) / (double)faculty;
-            sum += sign * kernel->coefs[x] * pow((double)x, (int)order) / (double)faculty;
+        for (unsigned int x = 1; x <= kernel->fir->len; ++x) {
+            sum += kernel->fir->coefs[x] * pow(-(double)x, (int)order) / (double)faculty;
+            sum += sign * kernel->fir->coefs[x] * pow((double)x, (int)order) / (double)faculty;
         }
     }
 
-    for (unsigned int x = 0; x <= kernel->len; ++x)
-        kernel->coefs[x] /= sum;
+    for (unsigned int x = 0; x <= kernel->fir->len; ++x)
+        kernel->fir->coefs[x] /= sum;
 
-    if (!kernel->is_symmetric)
-        for (unsigned int x = 0; x <= kernel->len; ++x)
-            kernel->coefs[x] *= -1;
+    if (!kernel->fir->is_symmetric)
+        for (unsigned int x = 0; x <= kernel->fir->len; ++x)
+            kernel->fir->coefs[x] *= -1;
 
-    kernel->fn_inner_mirror = NULL;
-    kernel->fn_inner_ptr = NULL;
-    kernel->fn_inner_optimistic = NULL;
-    kernel->fn_outer_mirror = NULL;
-    kernel->fn_outer_ptr = NULL;
-    kernel->fn_outer_optimistic = NULL;
+    kernel->fir->fn_inner_mirror = NULL;
+    kernel->fir->fn_inner_ptr = NULL;
+    kernel->fir->fn_inner_optimistic = NULL;
+    kernel->fir->fn_outer_mirror = NULL;
+    kernel->fir->fn_outer_ptr = NULL;
+    kernel->fir->fn_outer_optimistic = NULL;
 
     return kernel;
+
+out:
+    if (kernel->fir)
+        fastfilters_memory_free(kernel->fir->coefs);
+    if (kernel)
+        fastfilters_memory_free(kernel->fir);
+    fastfilters_memory_free(kernel);
+
+    return NULL;
 }
 
-void DLL_PUBLIC fastfilters_kernel_fir_free(fastfilters_kernel_fir_t kernel)
+void DLL_PUBLIC fastfilters_kernel_fir_free(fastfilters_kernel_t kernel)
 {
-    fastfilters_memory_free(kernel->coefs);
+    if (kernel->fir)
+        fastfilters_memory_free(kernel->fir->coefs);
+    if (kernel)
+        fastfilters_memory_free(kernel->fir);
     fastfilters_memory_free(kernel);
 }
 
-unsigned int DLL_PUBLIC fastfilters_kernel_fir_get_length(fastfilters_kernel_fir_t kernel)
+unsigned int DLL_PUBLIC fastfilters_kernel_fir_get_length(fastfilters_kernel_t kernel)
 {
-    return kernel->len;
+    return kernel->fir->len;
 }

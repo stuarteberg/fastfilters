@@ -163,8 +163,7 @@ static bool deriche_compute_coefs(fastfilters_kernel_iir_t kernel, unsigned int 
     return true;
 }
 
-fastfilters_kernel_iir_t DLL_PUBLIC fastfilters_kernel_iir_gaussian(unsigned int order, double sigma,
-                                                                    float window_ratio)
+fastfilters_kernel_t DLL_PUBLIC fastfilters_kernel_iir_gaussian(unsigned int order, double sigma, float window_ratio)
 {
     if (order > 2)
         return NULL;
@@ -172,33 +171,38 @@ fastfilters_kernel_iir_t DLL_PUBLIC fastfilters_kernel_iir_gaussian(unsigned int
     if (sigma < 0)
         return NULL;
 
-    fastfilters_kernel_iir_t kernel = fastfilters_memory_alloc(sizeof(struct _fastfilters_kernel_iir_t));
+    fastfilters_kernel_t kernel = fastfilters_memory_alloc(sizeof(struct _fastfilters_kernel_t));
     if (!kernel)
-        return NULL;
+        goto out;
+
+    kernel->fir = NULL;
+    kernel->iir = fastfilters_memory_alloc(sizeof(struct _fastfilters_kernel_iir_t));
+    if (!kernel->iir)
+        goto out;
 
     if (window_ratio > 0)
-        kernel->radius = floor(window_ratio * sigma + 0.5);
+        kernel->iir->radius = floor(window_ratio * sigma + 0.5);
     else
-        kernel->radius = floor(3.0 * sigma + 0.5 * order + 0.5); // FIXME: this is the formula currently used by vigra
+        kernel->iir->radius =
+            floor(3.0 * sigma + 0.5 * order + 0.5); // FIXME: this is the formula currently used by vigra
 
     // memcpy only
     if (fabs(sigma) < 1e-6) {
-        kernel->radius = 0;
-        kernel->order = 0;
+        kernel->iir->radius = 0;
+        kernel->iir->order = 0;
         return kernel;
     }
 
-    if (!deriche_compute_coefs(kernel, 4, order, sigma)) {
-        fastfilters_kernel_iir_free(kernel);
-        return NULL;
-    }
+    if (!deriche_compute_coefs(kernel->iir, 4, order, sigma))
+        goto out;
 
-    kernel->order = 4;
+    kernel->iir->order = 4;
 
     return kernel;
-}
 
-void DLL_PUBLIC fastfilters_kernel_iir_free(fastfilters_kernel_iir_t kernel)
-{
+out:
+    if (kernel && kernel->iir)
+        fastfilters_memory_free(kernel->iir);
     fastfilters_memory_free(kernel);
+    return NULL;
 }

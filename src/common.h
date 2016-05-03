@@ -54,8 +54,18 @@ extern "C" {
 
 #define ARRAY_LENGTH(x) (sizeof((x)) / sizeof((x)[0]))
 
+typedef enum {
+    FASTFILTERS_BORDER_MIRROR,
+    FASTFILTERS_BORDER_OPTIMISTIC,
+    FASTFILTERS_BORDER_PTR
+} fastfilters_border_treatment_t;
+
 typedef bool (*impl_fn_t)(const float *, const float *, const float *, size_t, size_t, size_t, size_t, float *, size_t,
                           size_t, const fastfilters_kernel_fir_t kernel);
+
+typedef bool (*convolve_fn_t)(const float *, size_t, size_t, size_t, size_t, float *, size_t, fastfilters_kernel_t,
+                              fastfilters_border_treatment_t, fastfilters_border_treatment_t, const float *,
+                              const float *, size_t);
 
 struct _fastfilters_kernel_fir_t {
     size_t len;
@@ -71,11 +81,13 @@ struct _fastfilters_kernel_fir_t {
     impl_fn_t fn_outer_optimistic;
 };
 
-typedef enum {
-    FASTFILTERS_BORDER_MIRROR,
-    FASTFILTERS_BORDER_OPTIMISTIC,
-    FASTFILTERS_BORDER_PTR
-} fastfilters_border_treatment_t;
+struct _fastfilters_kernel_t {
+    fastfilters_kernel_fir_t fir;
+    fastfilters_kernel_iir_t iir;
+
+    convolve_fn_t convolve_outer;
+    convolve_fn_t convolve_inner;
+};
 
 void DLL_LOCAL fastfilters_cpu_init(void);
 void DLL_LOCAL fastfilters_linalg_init(void);
@@ -92,14 +104,14 @@ void DLL_LOCAL fastfilters_fir_init(void);
 
 bool DLL_LOCAL fastfilters_fir_convolve_fir_inner(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                   size_t n_outer, size_t outer_stride, float *outptr,
-                                                  size_t outptr_stride, fastfilters_kernel_fir_t kernel,
+                                                  size_t outptr_stride, fastfilters_kernel_t kernel,
                                                   fastfilters_border_treatment_t left_border,
                                                   fastfilters_border_treatment_t right_border,
                                                   const float *borderptr_left, const float *borderptr_right,
                                                   size_t border_outer_stride);
 bool DLL_LOCAL fastfilters_fir_convolve_fir_outer(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                   size_t n_outer, size_t outer_stride, float *outptr,
-                                                  size_t outptr_stride, fastfilters_kernel_fir_t kernel,
+                                                  size_t outptr_stride, fastfilters_kernel_t kernel,
                                                   fastfilters_border_treatment_t left_border,
                                                   fastfilters_border_treatment_t right_border,
                                                   const float *borderptr_left, const float *borderptr_right,
@@ -107,28 +119,28 @@ bool DLL_LOCAL fastfilters_fir_convolve_fir_outer(const float *inptr, size_t n_p
 
 bool DLL_LOCAL fastfilters_fir_convolve_fir_inner_avx(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                       size_t n_outer, size_t outer_stride, float *outptr,
-                                                      size_t outptr_stride, fastfilters_kernel_fir_t kernel,
+                                                      size_t outptr_stride, fastfilters_kernel_t kernel,
                                                       fastfilters_border_treatment_t left_border,
                                                       fastfilters_border_treatment_t right_border,
                                                       const float *borderptr_left, const float *borderptr_right,
                                                       size_t border_outer_stride);
 bool DLL_LOCAL fastfilters_fir_convolve_fir_outer_avx(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                       size_t n_outer, size_t outer_stride, float *outptr,
-                                                      size_t outptr_stride, fastfilters_kernel_fir_t kernel,
+                                                      size_t outptr_stride, fastfilters_kernel_t kernel,
                                                       fastfilters_border_treatment_t left_border,
                                                       fastfilters_border_treatment_t right_border,
                                                       const float *borderptr_left, const float *borderptr_right,
                                                       size_t border_outer_stride);
 bool DLL_LOCAL fastfilters_fir_convolve_fir_inner_avxfma(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                          size_t n_outer, size_t outer_stride, float *outptr,
-                                                         size_t outptr_stride, fastfilters_kernel_fir_t kernel,
+                                                         size_t outptr_stride, fastfilters_kernel_t kernel,
                                                          fastfilters_border_treatment_t left_border,
                                                          fastfilters_border_treatment_t right_border,
                                                          const float *borderptr_left, const float *borderptr_right,
                                                          size_t border_outer_stride);
 bool DLL_LOCAL fastfilters_fir_convolve_fir_outer_avxfma(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                          size_t n_outer, size_t outer_stride, float *outptr,
-                                                         size_t outptr_stride, fastfilters_kernel_fir_t kernel,
+                                                         size_t outptr_stride, fastfilters_kernel_t kernel,
                                                          fastfilters_border_treatment_t left_border,
                                                          fastfilters_border_treatment_t right_border,
                                                          const float *borderptr_left, const float *borderptr_right,

@@ -31,7 +31,7 @@ namespace
 {
 
 struct FIRKernel {
-    fastfilters_kernel_fir_t kernel;
+    fastfilters_kernel_t kernel;
     const unsigned order;
     const double sigma;
 
@@ -171,7 +171,7 @@ py::array_t<float> convolve_2d_fir(py::array_t<float> &input, FIRKernel *k0, FIR
     convert_py2ff(input, ff);
     convert_py2ff(result, ff_out);
 
-    if (!fastfilters_fir_convolve2d(&ff, k0->kernel, k1->kernel, &ff_out, NULL))
+    if (!fastfilters_convolve2d(&ff, k0->kernel, k1->kernel, &ff_out, NULL))
         throw std::logic_error("fastfilters_fir_convolve2d returned false.");
 
     return result;
@@ -189,7 +189,7 @@ py::array_t<float> convolve_3d_fir(py::array_t<float> &input, FIRKernel *k0, FIR
     convert_py2ff(input, ff);
     convert_py2ff(result, ff_out);
 
-    if (!fastfilters_fir_convolve3d(&ff, k0->kernel, k1->kernel, k2->kernel, &ff_out, NULL))
+    if (!fastfilters_convolve3d(&ff, k0->kernel, k1->kernel, k2->kernel, &ff_out, NULL))
         throw std::logic_error("fastfilters_fir_convolve3d returned false.");
 
     return result;

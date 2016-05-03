@@ -146,11 +146,12 @@ static impl_fn_t find_fn(fastfilters_kernel_fir_t kernel, fastfilters_border_tre
 
 bool fastfilters_fir_convolve_fir_inner(const float *inptr, size_t n_pixels, size_t pixel_stride, size_t n_outer,
                                         size_t outer_stride, float *outptr, size_t outptr_stride,
-                                        fastfilters_kernel_fir_t kernel, fastfilters_border_treatment_t left_border,
+                                        fastfilters_kernel_t kernel_, fastfilters_border_treatment_t left_border,
                                         fastfilters_border_treatment_t right_border, const float *borderptr_left,
                                         const float *borderptr_right, size_t border_outer_stride)
 {
     impl_fn_t fn = NULL;
+    fastfilters_kernel_fir_t kernel = kernel_->fir;
 
     if (unlikely(kernel->len == 0)) {
         if (fabs(kernel->coefs[0] - 1.0) > 1e-6)
@@ -204,11 +205,12 @@ bool fastfilters_fir_convolve_fir_inner(const float *inptr, size_t n_pixels, siz
 
 bool fastfilters_fir_convolve_fir_outer(const float *inptr, size_t n_pixels, size_t pixel_stride, size_t n_outer,
                                         size_t outer_stride, float *outptr, size_t outptr_stride,
-                                        fastfilters_kernel_fir_t kernel, fastfilters_border_treatment_t left_border,
+                                        fastfilters_kernel_t kernel_, fastfilters_border_treatment_t left_border,
                                         fastfilters_border_treatment_t right_border, const float *borderptr_left,
                                         const float *borderptr_right, size_t border_outer_stride)
 {
     impl_fn_t fn = NULL;
+    fastfilters_kernel_fir_t kernel = kernel_->fir;
 
     if (unlikely(kernel->len == 0)) {
         if (fabs(kernel->coefs[0] - 1.0) > 1e-6)

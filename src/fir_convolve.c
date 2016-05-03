@@ -23,10 +23,7 @@
 #include "fastfilters.h"
 #include "common.h"
 
-typedef bool (*fir_convolve_fn_t)(const float *, size_t, size_t, size_t, size_t, float *, size_t,
-                                  fastfilters_kernel_fir_t, fastfilters_border_treatment_t,
-                                  fastfilters_border_treatment_t, const float *, const float *, size_t);
-
+#if 0
 static fir_convolve_fn_t g_convolve_inner = NULL;
 static fir_convolve_fn_t g_convolve_outer = NULL;
 
@@ -44,43 +41,46 @@ void fastfilters_fir_init(void)
     }
 }
 
-bool DLL_PUBLIC fastfilters_fir_convolve2d(const fastfilters_array2d_t *inarray, const fastfilters_kernel_fir_t kernelx,
-                                           const fastfilters_kernel_fir_t kernely,
-                                           const fastfilters_array2d_t *outarray, const fastfilters_options_t *options)
+#endif
+
+bool DLL_PUBLIC fastfilters_convolve2d(const fastfilters_array2d_t *inarray, const fastfilters_kernel_t kernelx,
+                                       const fastfilters_kernel_t kernely, const fastfilters_array2d_t *outarray,
+                                       const fastfilters_options_t *options)
 {
     (void)options;
-    if (!g_convolve_inner(inarray->ptr, inarray->n_x, inarray->stride_x, inarray->n_y, inarray->stride_y, outarray->ptr,
-                          outarray->stride_y, kernelx, FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR, NULL, NULL,
-                          0))
+    if (!kernelx->convolve_inner(inarray->ptr, inarray->n_x, inarray->stride_x, inarray->n_y, inarray->stride_y,
+                                 outarray->ptr, outarray->stride_y, kernelx, FASTFILTERS_BORDER_MIRROR,
+                                 FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0))
         return false;
 
-    return g_convolve_outer(outarray->ptr, inarray->n_y, outarray->stride_y, inarray->n_x * inarray->n_channels,
-                            inarray->stride_x / inarray->n_channels, outarray->ptr, outarray->stride_y, kernely,
-                            FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0);
+    return kernely->convolve_outer(outarray->ptr, inarray->n_y, outarray->stride_y, inarray->n_x * inarray->n_channels,
+                                   inarray->stride_x / inarray->n_channels, outarray->ptr, outarray->stride_y, kernely,
+                                   FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0);
 }
 
-bool DLL_PUBLIC fastfilters_fir_convolve3d(const fastfilters_array3d_t *inarray, const fastfilters_kernel_fir_t kernelx,
-                                           const fastfilters_kernel_fir_t kernely,
-                                           const fastfilters_kernel_fir_t kernelz,
-                                           const fastfilters_array3d_t *outarray, const fastfilters_options_t *options)
+bool DLL_PUBLIC fastfilters_convolve3d(const fastfilters_array3d_t *inarray, const fastfilters_kernel_t kernelx,
+                                       const fastfilters_kernel_t kernely, const fastfilters_kernel_t kernelz,
+                                       const fastfilters_array3d_t *outarray, const fastfilters_options_t *options)
 {
     (void)options;
 
-    if (!g_convolve_inner(inarray->ptr, inarray->n_x, inarray->stride_x, inarray->n_y * inarray->n_z, inarray->stride_y,
-                          outarray->ptr, outarray->stride_y, kernelx, FASTFILTERS_BORDER_MIRROR,
-                          FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0))
-        return false;
-
     for (size_t z = 0; z < inarray->n_z; ++z) {
+        const float *planeptr = inarray->ptr + z * inarray->stride_z;
         float *planeptr_out = outarray->ptr + z * outarray->stride_z;
 
-        if (!g_convolve_outer(planeptr_out, inarray->n_y, outarray->stride_y, inarray->n_x * inarray->n_channels,
-                              inarray->stride_x / inarray->n_channels, planeptr_out, outarray->stride_y, kernely,
-                              FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0))
+        if (!kernelx->convolve_inner(planeptr, inarray->n_x, inarray->stride_x, inarray->n_y, inarray->stride_y,
+                                     planeptr_out, outarray->stride_y, kernelx, FASTFILTERS_BORDER_MIRROR,
+                                     FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0))
+            return false;
+
+        if (!kernely->convolve_outer(planeptr_out, inarray->n_y, outarray->stride_y, inarray->n_x * inarray->n_channels,
+                                     inarray->stride_x / inarray->n_channels, planeptr_out, outarray->stride_y, kernely,
+                                     FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0))
             return false;
     }
 
-    return g_convolve_outer(outarray->ptr, outarray->n_z, outarray->stride_z,
-                            inarray->n_y * inarray->n_x * inarray->n_channels, 1, outarray->ptr, outarray->stride_z,
-                            kernelz, FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR, NULL, NULL, 0);
+    return kernelz->convolve_outer(outarray->ptr, outarray->n_z, outarray->stride_z,
+                                   inarray->n_y * inarray->n_x * inarray->n_channels, 1, outarray->ptr,
+                                   outarray->stride_z, kernelz, FASTFILTERS_BORDER_MIRROR, FASTFILTERS_BORDER_MIRROR,
+                                   NULL, NULL, 0);
 }

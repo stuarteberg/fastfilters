@@ -27,13 +27,13 @@ bool DLL_PUBLIC fastfilters_fir_gaussian2d(const fastfilters_array2d_t *inarray,
                                            fastfilters_array2d_t *outarray, const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t kx = NULL;
+    fastfilters_kernel_t kx = NULL;
 
     kx = fastfilters_kernel_fir_gaussian(order, sigma, opt_window_ratio(options));
     if (!kx)
         goto out;
 
-    result = fastfilters_fir_convolve2d(inarray, kx, kx, outarray, options);
+    result = fastfilters_convolve2d(inarray, kx, kx, outarray, options);
 
 out:
     if (kx)
@@ -46,9 +46,9 @@ bool DLL_PUBLIC fastfilters_fir_hog2d(const fastfilters_array2d_t *inarray, doub
                                       const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t k_smooth = NULL;
-    fastfilters_kernel_fir_t k_first = NULL;
-    fastfilters_kernel_fir_t k_second = NULL;
+    fastfilters_kernel_t k_smooth = NULL;
+    fastfilters_kernel_t k_first = NULL;
+    fastfilters_kernel_t k_second = NULL;
 
     k_smooth = fastfilters_kernel_fir_gaussian(0, sigma, opt_window_ratio(options));
     if (!k_smooth)
@@ -62,15 +62,15 @@ bool DLL_PUBLIC fastfilters_fir_hog2d(const fastfilters_array2d_t *inarray, doub
     if (!k_second)
         goto out;
 
-    result = fastfilters_fir_convolve2d(inarray, k_second, k_smooth, out_xx, options);
+    result = fastfilters_convolve2d(inarray, k_second, k_smooth, out_xx, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve2d(inarray, k_smooth, k_second, out_yy, options);
+    result = fastfilters_convolve2d(inarray, k_smooth, k_second, out_yy, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve2d(inarray, k_first, k_first, out_xy, options);
+    result = fastfilters_convolve2d(inarray, k_first, k_first, out_xy, options);
     if (!result)
         goto out;
 
@@ -89,8 +89,8 @@ static bool fastfilters_fir_deriv2d_inner(const fastfilters_array2d_t *inarray, 
                                           const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t k_smooth = NULL;
-    fastfilters_kernel_fir_t k_deriv = NULL;
+    fastfilters_kernel_t k_smooth = NULL;
+    fastfilters_kernel_t k_deriv = NULL;
 
     k_smooth = fastfilters_kernel_fir_gaussian(0, sigma, opt_window_ratio(options));
     if (!k_smooth)
@@ -100,11 +100,11 @@ static bool fastfilters_fir_deriv2d_inner(const fastfilters_array2d_t *inarray, 
     if (!k_deriv)
         goto out;
 
-    result = fastfilters_fir_convolve2d(inarray, k_deriv, k_smooth, out0, options);
+    result = fastfilters_convolve2d(inarray, k_deriv, k_smooth, out0, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve2d(inarray, k_smooth, k_deriv, out1, options);
+    result = fastfilters_convolve2d(inarray, k_smooth, k_deriv, out1, options);
     if (!result)
         goto out;
 
@@ -159,7 +159,7 @@ bool DLL_PUBLIC fastfilters_fir_structure_tensor2d(const fastfilters_array2d_t *
                                                    const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t k_smooth = NULL;
+    fastfilters_kernel_t k_smooth = NULL;
     fastfilters_array2d_t *tmp = NULL;
     fastfilters_array2d_t *tmpx = NULL;
     fastfilters_array2d_t *tmpy = NULL;
@@ -185,17 +185,17 @@ bool DLL_PUBLIC fastfilters_fir_structure_tensor2d(const fastfilters_array2d_t *
         goto out;
 
     fastfilters_combine_mul2d(tmpx, tmpx, tmp);
-    result = fastfilters_fir_convolve2d(tmp, k_smooth, k_smooth, out_xx, options);
+    result = fastfilters_convolve2d(tmp, k_smooth, k_smooth, out_xx, options);
     if (!result)
         goto out;
 
     fastfilters_combine_mul2d(tmpy, tmpy, tmp);
-    result = fastfilters_fir_convolve2d(tmp, k_smooth, k_smooth, out_yy, options);
+    result = fastfilters_convolve2d(tmp, k_smooth, k_smooth, out_yy, options);
     if (!result)
         goto out;
 
     fastfilters_combine_mul2d(tmpx, tmpy, tmp);
-    result = fastfilters_fir_convolve2d(tmp, k_smooth, k_smooth, out_xy, options);
+    result = fastfilters_convolve2d(tmp, k_smooth, k_smooth, out_xy, options);
     if (!result)
         goto out;
 
@@ -217,9 +217,9 @@ DLL_PUBLIC bool fastfilters_fir_hog3d(const fastfilters_array3d_t *inarray, doub
                                       fastfilters_array3d_t *out_yz, const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t k_smooth = NULL;
-    fastfilters_kernel_fir_t k_first = NULL;
-    fastfilters_kernel_fir_t k_second = NULL;
+    fastfilters_kernel_t k_smooth = NULL;
+    fastfilters_kernel_t k_first = NULL;
+    fastfilters_kernel_t k_second = NULL;
 
     k_smooth = fastfilters_kernel_fir_gaussian(0, sigma, opt_window_ratio(options));
     if (!k_smooth)
@@ -233,27 +233,27 @@ DLL_PUBLIC bool fastfilters_fir_hog3d(const fastfilters_array3d_t *inarray, doub
     if (!k_second)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_second, k_smooth, k_smooth, out_xx, options);
+    result = fastfilters_convolve3d(inarray, k_second, k_smooth, k_smooth, out_xx, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_smooth, k_second, k_smooth, out_yy, options);
+    result = fastfilters_convolve3d(inarray, k_smooth, k_second, k_smooth, out_yy, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_smooth, k_smooth, k_second, out_zz, options);
+    result = fastfilters_convolve3d(inarray, k_smooth, k_smooth, k_second, out_zz, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_first, k_first, k_smooth, out_xy, options);
+    result = fastfilters_convolve3d(inarray, k_first, k_first, k_smooth, out_xy, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_first, k_smooth, k_first, out_xz, options);
+    result = fastfilters_convolve3d(inarray, k_first, k_smooth, k_first, out_xz, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_smooth, k_first, k_first, out_yz, options);
+    result = fastfilters_convolve3d(inarray, k_smooth, k_first, k_first, out_yz, options);
     if (!result)
         goto out;
 
@@ -271,13 +271,13 @@ bool DLL_PUBLIC fastfilters_fir_gaussian3d(const fastfilters_array3d_t *inarray,
                                            fastfilters_array3d_t *outarray, const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t kx = NULL;
+    fastfilters_kernel_t kx = NULL;
 
     kx = fastfilters_kernel_fir_gaussian(order, sigma, opt_window_ratio(options));
     if (!kx)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, kx, kx, kx, outarray, options);
+    result = fastfilters_convolve3d(inarray, kx, kx, kx, outarray, options);
 
 out:
     if (kx)
@@ -290,8 +290,8 @@ static bool fastfilters_fir_deriv3d_inner(const fastfilters_array3d_t *inarray, 
                                           fastfilters_array3d_t *out2, const fastfilters_options_t *options)
 {
     bool result = false;
-    fastfilters_kernel_fir_t k_smooth = NULL;
-    fastfilters_kernel_fir_t k_deriv = NULL;
+    fastfilters_kernel_t k_smooth = NULL;
+    fastfilters_kernel_t k_deriv = NULL;
 
     k_smooth = fastfilters_kernel_fir_gaussian(0, sigma, opt_window_ratio(options));
     if (!k_smooth)
@@ -301,15 +301,15 @@ static bool fastfilters_fir_deriv3d_inner(const fastfilters_array3d_t *inarray, 
     if (!k_deriv)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_deriv, k_smooth, k_smooth, out0, options);
+    result = fastfilters_convolve3d(inarray, k_deriv, k_smooth, k_smooth, out0, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_smooth, k_deriv, k_smooth, out1, options);
+    result = fastfilters_convolve3d(inarray, k_smooth, k_deriv, k_smooth, out1, options);
     if (!result)
         goto out;
 
-    result = fastfilters_fir_convolve3d(inarray, k_smooth, k_smooth, k_deriv, out2, options);
+    result = fastfilters_convolve3d(inarray, k_smooth, k_smooth, k_deriv, out2, options);
     if (!result)
         goto out;
 
