@@ -45,7 +45,7 @@ struct FIRKernel {
 
     ~FIRKernel()
     {
-        fastfilters_kernel_fir_free(kernel);
+        fastfilters_kernel_free(kernel);
         kernel = NULL;
     }
 

@@ -93,11 +93,9 @@ bool DLL_PUBLIC fastfilters_cpu_check(fastfilters_cpu_feature_t feature);
 bool DLL_PUBLIC fastfilters_cpu_enable(fastfilters_cpu_feature_t feature, bool enable);
 
 fastfilters_kernel_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int order, double sigma, float window_ratio);
-unsigned int DLL_PUBLIC fastfilters_kernel_fir_get_length(fastfilters_kernel_t kernel);
-void DLL_PUBLIC fastfilters_kernel_fir_free(fastfilters_kernel_t kernel);
-
 fastfilters_kernel_t DLL_PUBLIC fastfilters_kernel_iir_gaussian(unsigned int order, double sigma, float window_ratio);
-void DLL_PUBLIC fastfilters_kernel_iir_free(fastfilters_kernel_t kernel);
+unsigned int DLL_PUBLIC fastfilters_kernel_fir_get_length(fastfilters_kernel_t kernel);
+void DLL_PUBLIC fastfilters_kernel_free(fastfilters_kernel_t kernel);
 
 bool DLL_PUBLIC fastfilters_convolve2d(const fastfilters_array2d_t *inarray, const fastfilters_kernel_t kernelx,
                                        const fastfilters_kernel_t kernely, const fastfilters_array2d_t *outarray,

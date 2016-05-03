@@ -37,7 +37,7 @@ bool DLL_PUBLIC fastfilters_fir_gaussian2d(const fastfilters_array2d_t *inarray,
 
 out:
     if (kx)
-        fastfilters_kernel_fir_free(kx);
+        fastfilters_kernel_free(kx);
     return result;
 }
 
@@ -76,11 +76,11 @@ bool DLL_PUBLIC fastfilters_fir_hog2d(const fastfilters_array2d_t *inarray, doub
 
 out:
     if (k_smooth)
-        fastfilters_kernel_fir_free(k_smooth);
+        fastfilters_kernel_free(k_smooth);
     if (k_first)
-        fastfilters_kernel_fir_free(k_first);
+        fastfilters_kernel_free(k_first);
     if (k_second)
-        fastfilters_kernel_fir_free(k_second);
+        fastfilters_kernel_free(k_second);
     return result;
 }
 
@@ -110,9 +110,9 @@ static bool fastfilters_fir_deriv2d_inner(const fastfilters_array2d_t *inarray, 
 
 out:
     if (k_smooth)
-        fastfilters_kernel_fir_free(k_smooth);
+        fastfilters_kernel_free(k_smooth);
     if (k_deriv)
-        fastfilters_kernel_fir_free(k_deriv);
+        fastfilters_kernel_free(k_deriv);
     return result;
 }
 
@@ -201,7 +201,7 @@ bool DLL_PUBLIC fastfilters_fir_structure_tensor2d(const fastfilters_array2d_t *
 
 out:
     if (k_smooth)
-        fastfilters_kernel_fir_free(k_smooth);
+        fastfilters_kernel_free(k_smooth);
     if (tmp)
         fastfilters_array2d_free(tmp);
     if (tmpx)
@@ -259,11 +259,11 @@ DLL_PUBLIC bool fastfilters_fir_hog3d(const fastfilters_array3d_t *inarray, doub
 
 out:
     if (k_smooth)
-        fastfilters_kernel_fir_free(k_smooth);
+        fastfilters_kernel_free(k_smooth);
     if (k_first)
-        fastfilters_kernel_fir_free(k_first);
+        fastfilters_kernel_free(k_first);
     if (k_second)
-        fastfilters_kernel_fir_free(k_second);
+        fastfilters_kernel_free(k_second);
     return result;
 }
 
@@ -281,7 +281,7 @@ bool DLL_PUBLIC fastfilters_fir_gaussian3d(const fastfilters_array3d_t *inarray,
 
 out:
     if (kx)
-        fastfilters_kernel_fir_free(kx);
+        fastfilters_kernel_free(kx);
     return result;
 }
 
@@ -315,9 +315,9 @@ static bool fastfilters_fir_deriv3d_inner(const fastfilters_array3d_t *inarray, 
 
 out:
     if (k_smooth)
-        fastfilters_kernel_fir_free(k_smooth);
+        fastfilters_kernel_free(k_smooth);
     if (k_deriv)
-        fastfilters_kernel_fir_free(k_deriv);
+        fastfilters_kernel_free(k_deriv);
     return result;
 }
 
