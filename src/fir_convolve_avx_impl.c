@@ -19,6 +19,7 @@
 #include "fastfilters.h"
 #include "common.h"
 #include "config.h"
+#include "kernel.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -32,49 +33,10 @@
 
 #include "fir_convolve_avx_common.h"
 
-#if !defined(FF_KERNEL_LEN) && !defined(FF_KERNEL_LEN_RUNTIME)
-#error !defined(FF_KERNEL_LEN) && !defined(FF_KERNEL_LEN_RUNTIME)
-#endif
+#define FF_KERNEL_IMPL_INCLUDE() "fir_convolve_avx_impl.c"
+#include "kernel_selfinclude.h"
 
-#if !defined(FF_BOUNDARY_OPTIMISTIC_LEFT) && !defined(FF_BOUNDARY_MIRROR_LEFT) && !defined(FF_BOUNDARY_PTR_LEFT)
-
-#define FF_BOUNDARY_OPTIMISTIC_LEFT
-#include "fir_convolve_avx_impl.c"
-#undef FF_BOUNDARY_OPTIMISTIC_LEFT
-
-#define FF_BOUNDARY_MIRROR_LEFT
-#include "fir_convolve_avx_impl.c"
-#undef FF_BOUNDARY_MIRROR_LEFT
-
-#define FF_BOUNDARY_PTR_LEFT
-#include "fir_convolve_avx_impl.c"
-#undef FF_BOUNDARY_PTR_LEFT
-
-#elif !defined(FF_BOUNDARY_OPTIMISTIC_RIGHT) && !defined(FF_BOUNDARY_MIRROR_RIGHT) && !defined(FF_BOUNDARY_PTR_RIGHT)
-
-#define FF_BOUNDARY_OPTIMISTIC_RIGHT
-#include "fir_convolve_avx_impl.c"
-#undef FF_BOUNDARY_OPTIMISTIC_RIGHT
-
-#define FF_BOUNDARY_MIRROR_RIGHT
-#include "fir_convolve_avx_impl.c"
-#undef FF_BOUNDARY_MIRROR_RIGHT
-
-#define FF_BOUNDARY_PTR_RIGHT
-#include "fir_convolve_avx_impl.c"
-#undef FF_BOUNDARY_PTR_RIGHT
-
-#elif !defined(FF_KERNEL_SYMMETRIC) && !defined(FF_KERNEL_ANTISYMMETRIC)
-
-#define FF_KERNEL_SYMMETRIC
-#include "fir_convolve_avx_impl.c"
-#undef FF_KERNEL_SYMMETRIC
-
-#define FF_KERNEL_ANTISYMMETRIC
-#include "fir_convolve_avx_impl.c"
-#undef FF_KERNEL_ANTISYMMETRIC
-
-#else
+#ifdef FF_KERNEL_IMPL_IS_INCLUDED
 
 #ifdef FF_BOUNDARY_MIRROR_LEFT
 #define param_boundary_left 0

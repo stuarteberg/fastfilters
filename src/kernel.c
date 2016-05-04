@@ -18,7 +18,8 @@
 
 #include "fastfilters.h"
 #include "common.h"
-#include "iir_kernel.h"
+#include "kernel.h"
+#include "iir_convolve_nosimd.h"
 #include "boost/preprocessor/library.hpp"
 
 #include <complex.h>
@@ -60,20 +61,20 @@
 /*                                                                      */
 /************************************************************************/
 
-static convolve_fn_t g_convolve_inner = NULL;
-static convolve_fn_t g_convolve_outer = NULL;
+static convolve_fn_t g_fir_convolve_inner = NULL;
+static convolve_fn_t g_fir_convolve_outer = NULL;
 
 void fastfilters_fir_init(void)
 {
     if (fastfilters_cpu_check(FASTFILTERS_CPU_FMA)) {
-        g_convolve_outer = &fastfilters_fir_convolve_fir_outer_avxfma;
-        g_convolve_inner = &fastfilters_fir_convolve_fir_inner_avxfma;
+        g_fir_convolve_outer = &fastfilters_fir_convolve_fir_outer_avxfma;
+        g_fir_convolve_inner = &fastfilters_fir_convolve_fir_inner_avxfma;
     } else if (fastfilters_cpu_check(FASTFILTERS_CPU_AVX)) {
-        g_convolve_outer = &fastfilters_fir_convolve_fir_outer_avx;
-        g_convolve_inner = &fastfilters_fir_convolve_fir_inner_avx;
+        g_fir_convolve_outer = &fastfilters_fir_convolve_fir_outer_avx;
+        g_fir_convolve_inner = &fastfilters_fir_convolve_fir_inner_avx;
     } else {
-        g_convolve_outer = &fastfilters_fir_convolve_fir_outer;
-        g_convolve_inner = &fastfilters_fir_convolve_fir_inner;
+        g_fir_convolve_outer = &fastfilters_fir_convolve_fir_outer;
+        g_fir_convolve_inner = &fastfilters_fir_convolve_fir_inner;
     }
 }
 
@@ -97,8 +98,8 @@ fastfilters_kernel_t DLL_PUBLIC fastfilters_kernel_fir_gaussian(unsigned int ord
     if (!kernel->fir)
         goto out;
 
-    kernel->convolve_inner = g_convolve_inner;
-    kernel->convolve_outer = g_convolve_outer;
+    kernel->convolve_inner = g_fir_convolve_inner;
+    kernel->convolve_outer = g_fir_convolve_outer;
 
     if (window_ratio > 0)
         kernel->fir->len = floor(window_ratio * sigma + 0.5);
@@ -221,6 +222,15 @@ typedef struct {
     double complex alpha[4];
     double complex lambda[4];
 } deriche_precomputed_t;
+
+static convolve_fn_t g_iir_convolve_inner = NULL;
+static convolve_fn_t g_iir_convolve_outer = NULL;
+
+void fastfilters_iir_init(void)
+{
+    g_iir_convolve_inner = iir_convolve_inner;
+    g_iir_convolve_outer = iir_convolve_outer;
+}
 
 // Rachid Deriche. Recursively implementating the Gaussian and its derivatives.
 // [Research Report] RR-1893, 1993, pp.24. <inria-00074778>

@@ -16,24 +16,19 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
+#ifndef FASTFILTERS_IIR_CONVOLVE_NOSIMD_H
+#define FASTFILTERS_IIR_CONVOLVE_NOSIMD_H
 
-#include "fastfilters.h"
-#include "common.h"
-#include "kernel.h"
+DLL_LOCAL bool iir_convolve_inner(const float *inptr, size_t n_pixels, size_t pixel_stride, size_t n_outer,
+                                  size_t outer_stride, float *outptr, size_t outptr_stride,
+                                  fastfilters_kernel_t kernel_, fastfilters_border_treatment_t left_border,
+                                  fastfilters_border_treatment_t right_border, const float *borderptr_left,
+                                  const float *borderptr_right, size_t border_outer_stride);
 
-void DLL_PUBLIC fastfilters_init_ex(fastfilters_alloc_fn_t alloc_fn, fastfilters_free_fn_t free_fn)
-{
-    fastfilters_cpu_init();
-    fastfilters_memory_init(alloc_fn, free_fn);
-    fastfilters_linalg_init();
-    fastfilters_fir_init();
-    fastfilters_iir_init();
-}
+DLL_LOCAL bool iir_convolve_outer(const float *inptr, size_t n_pixels, size_t pixel_stride, size_t n_outer,
+                                  size_t outer_stride, float *outptr, size_t outptr_stride,
+                                  fastfilters_kernel_t kernel_, fastfilters_border_treatment_t left_border,
+                                  fastfilters_border_treatment_t right_border, const float *borderptr_left,
+                                  const float *borderptr_right, size_t border_outer_stride);
 
-void DLL_PUBLIC fastfilters_init(void)
-{
-    fastfilters_init_ex(NULL, NULL);
-}
+#endif

@@ -67,28 +67,6 @@ typedef bool (*convolve_fn_t)(const float *, size_t, size_t, size_t, size_t, flo
                               fastfilters_border_treatment_t, fastfilters_border_treatment_t, const float *,
                               const float *, size_t);
 
-struct _fastfilters_kernel_fir_t {
-    size_t len;
-    bool is_symmetric;
-    float *coefs;
-
-    impl_fn_t fn_inner_mirror;
-    impl_fn_t fn_inner_ptr;
-    impl_fn_t fn_inner_optimistic;
-
-    impl_fn_t fn_outer_mirror;
-    impl_fn_t fn_outer_ptr;
-    impl_fn_t fn_outer_optimistic;
-};
-
-struct _fastfilters_kernel_t {
-    fastfilters_kernel_fir_t fir;
-    fastfilters_kernel_iir_t iir;
-
-    convolve_fn_t convolve_outer;
-    convolve_fn_t convolve_inner;
-};
-
 void DLL_LOCAL fastfilters_cpu_init(void);
 void DLL_LOCAL fastfilters_linalg_init(void);
 
@@ -99,8 +77,6 @@ void DLL_LOCAL fastfilters_memory_free(void *ptr);
 
 void DLL_LOCAL *fastfilters_memory_align(size_t alignment, size_t size);
 void DLL_LOCAL fastfilters_memory_align_free(void *ptr);
-
-void DLL_LOCAL fastfilters_fir_init(void);
 
 bool DLL_LOCAL fastfilters_fir_convolve_fir_inner(const float *inptr, size_t n_pixels, size_t pixel_stride,
                                                   size_t n_outer, size_t outer_stride, float *outptr,

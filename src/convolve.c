@@ -22,6 +22,7 @@
 
 #include "fastfilters.h"
 #include "common.h"
+#include "kernel.h"
 
 bool DLL_PUBLIC fastfilters_convolve2d(const fastfilters_array2d_t *inarray, const fastfilters_kernel_t kernelx,
                                        const fastfilters_kernel_t kernely, const fastfilters_array2d_t *outarray,

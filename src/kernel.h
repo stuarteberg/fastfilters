@@ -16,10 +16,13 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef FASTFILTERS_IIR_KERNEL_H
-#define FASTFILTERS_IIR_KERNEL_H
+#ifndef FASTFILTERS_KERNEL_H
+#define FASTFILTERS_KERNEL_H
 
 #include "common.h"
+
+void DLL_LOCAL fastfilters_fir_init(void);
+void DLL_LOCAL fastfilters_iir_init(void);
 
 struct _fastfilters_kernel_iir_t {
     size_t order;
@@ -27,6 +30,28 @@ struct _fastfilters_kernel_iir_t {
     float n_anticausal[4];
     float d[4];
     double radius;
+};
+
+struct _fastfilters_kernel_fir_t {
+    size_t len;
+    bool is_symmetric;
+    float *coefs;
+
+    impl_fn_t fn_inner_mirror;
+    impl_fn_t fn_inner_ptr;
+    impl_fn_t fn_inner_optimistic;
+
+    impl_fn_t fn_outer_mirror;
+    impl_fn_t fn_outer_ptr;
+    impl_fn_t fn_outer_optimistic;
+};
+
+struct _fastfilters_kernel_t {
+    fastfilters_kernel_fir_t fir;
+    fastfilters_kernel_iir_t iir;
+
+    convolve_fn_t convolve_outer;
+    convolve_fn_t convolve_inner;
 };
 
 #endif

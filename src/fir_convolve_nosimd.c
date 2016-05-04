@@ -19,6 +19,7 @@
 #include "fastfilters.h"
 #include "common.h"
 #include "config.h"
+#include "kernel.h"
 
 #include <stdbool.h>
 #include <stdint.h>
