@@ -33,6 +33,8 @@ requirements:
   run:
     - python {{PY_VER}}*
     - numpy {{NPY_VER}}*
+    # in order to support older linux distros after gcc5 switch:
+    - libstdcxx-ng >=5.4.0  # [linux]
 
 test:
   requires:
