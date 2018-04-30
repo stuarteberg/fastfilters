@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.8.8)
 project (fastfilters)
 
 include(GetGitRevisionDescription.cmake)
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/pybind11/tools)
 
 git_describe(FF_VERSION --tags)
 string(SUBSTRING ${FF_VERSION} 1 -1 FF_VERSION)
@@ -11,6 +12,7 @@ set(FF_UNROLL 10)
 
 add_definitions(-DFF_UNROLL=${FF_UNROLL})
 include("pybind11/tools/FindPythonLibsNew.cmake")
+find_package(PythonLibsNew)
 
 include(CheckCCompilerFlag)
 check_c_compiler_flag("-std=c99" HAS_C99_FLAG)
@@ -410,7 +412,6 @@ target_link_libraries(core PUBLIC fastfilters)
 set_source_files_properties(src/python/core.cxx PROPERTIES COMPILE_FLAGS "-DFF_VERSION_STR=\\\"${FF_VERSION}\\\"")
 
 if(NOT DEFINED FF_INSTALL_DIR OR FF_INSTALL_DIR MATCHES "^$")
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils.sysconfig import *; print(get_python_lib(1))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
   FILE(TO_CMAKE_PATH ${PYTHON_SITE_PACKAGES} FF_INSTALL_DIR)
 endif()
 
