@@ -24,21 +24,18 @@ requirements:
     - {{ compiler("c") }}
     - {{ compiler("cxx") }}
   host:
-    - python 2.7*|3.4*|3.5*|3.6*
-    - python {{ python }}*
-    - numpy {{ numpy }}*
+    - python {{ python }}
+    - numpy {{ numpy }}
     - nose
     - vigra {{ vigra }}
-
   run:
     - python
-    - numpy
+    - {{ pin_compatible("numpy") }}
 
 test:
   requires:
     - vigra >=1.11.0
     - nose
-    - numpy {{NPY_VER}}*
 
   source_files:
     - tests
@@ -48,3 +45,9 @@ test:
 
   commands:
     - cd tests && touch set_paths.py && nosetests
+
+about:
+  author: Sven Peter (svenpeter42)
+  home: https://github.com/svenpeter42/fastfilters
+  license: MIT
+  summary: Fast gaussian and derivative convolutional filters
