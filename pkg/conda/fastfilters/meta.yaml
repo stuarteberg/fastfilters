@@ -25,12 +25,11 @@ requirements:
     - {{ compiler("cxx") }}
   host:
     - python {{ python }}
-    - numpy {{ numpy }}
     - nose
     - vigra {{ vigra }}
   run:
     - python
-    - {{ pin_compatible("numpy") }}
+    - numpy >=1.12
 
 test:
   requires:
