@@ -31,9 +31,10 @@ requirements:
     - python
     - numpy >=1.12
 
+
 test:
   requires:
-    - vigra >=1.11.0
+    - vigra >={{ vigra }}
     - nose
 
   source_files:
